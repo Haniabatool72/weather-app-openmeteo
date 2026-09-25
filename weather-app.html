@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather App</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .weather-container {
+    background: rgba(255, 255, 255, 0.95);
+    width: 100%;
+    max-width: 400px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    padding: 30px;
+  }
+
+  h1 {
+    text-align: center;
+    color: #333;
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  .search-box {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+  }
+
+  #cityInput {
+    flex: 1;
+    padding: 12px 15px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+  }
+
+  #cityInput:focus {
+    border-color: #4facfe;
+  }
+
+  #searchBtn {
+    background: #4facfe;
+    color: white;
+    border: none;
+    padding: 0 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.2s;
+  }
+
+  #searchBtn:hover {
+    background: #00a6ed;
+  }
+
+  .weather-info {
+    display: none;
+    text-align: center;
+  }
+
+  .weather-info.active {
+    display: block;
+    animation: fadeIn 0.4s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .location {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+  }
+
+  .date {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 15px;
+  }
+
+  .weather-icon {
+    font-size: 70px;
+    margin: 10px 0;
+  }
+
+  .temperature {
+    font-size: 48px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+  }
+
+  .condition {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 20px;
+  }
+
+  .details {
+    display: flex;
+    justify-content: space-around;
+    background: #f0f8ff;
+    border-radius: 12px;
+    padding: 15px;
+  }
+
+  .detail-item {
+    text-align: center;
+  }
+
+  .detail-item .label {
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 4px;
+  }
+
+  .detail-item .value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .status-msg {
+    text-align: center;
+    color: #888;
+    font-size: 14px;
+    padding: 20px 0;
+  }
+
+  .status-msg.error {
+    color: #e74c3c;
+  }
+
+  .unit-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .unit-btn {
+    background: #eee;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #666;
+    transition: all 0.2s;
+  }
+
+  .unit-btn.active {
+    background: #4facfe;
+    color: white;
+  }
+</style>
+</head>
+<body>
+
+<div class="weather-container">
+  <h1>🌤️ Weather App</h1>
+
+  <div class="search-box">
+    <input type="text" id="cityInput" placeholder="Enter city name...">
+    <button id="searchBtn">🔍</button>
+  </div>
+
+  <div id="statusMsg" class="status-msg">Search a city to see the weather 🌍</div>
+
+  <div id="weatherInfo" class="weather-info">
+    <div class="location" id="location">--</div>
+    <div class="date" id="date">--</div>
+    <div class="weather-icon" id="weatherIcon">☀️</div>
+    <div class="temperature" id="temperature">--°</div>
+    <div class="condition" id="condition">--</div>
+
+    <div class="details">
+      <div class="detail-item">
+        <div class="label">Feels Like</div>
+        <div class="value" id="feelsLike">--°</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Humidity</div>
+        <div class="value" id="humidity">--%</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">Wind</div>
+        <div class="value" id="wind">-- km/h</div>
+      </div>
+    </div>
+
+    <div class="unit-toggle">
+      <button class="unit-btn active" id="celsiusBtn">°C</button>
+      <button class="unit-btn" id="fahrenheitBtn">°F</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const cityInput = document.getElementById('cityInput');
+  const searchBtn = document.getElementById('searchBtn');
+  const statusMsg = document.getElementById('statusMsg');
+  const weatherInfo = document.getElementById('weatherInfo');
+  const celsiusBtn = document.getElementById('celsiusBtn');
+  const fahrenheitBtn = document.getElementById('fahrenheitBtn');
+
+  let currentTempC = null;
+  let currentFeelsLikeC = null;
+  let isCelsius = true;
+
+  // Weather code to icon + description mapping (Open-Meteo WMO codes)
+  const weatherCodes = {
+    0: ['☀️', 'Clear sky'],
+    1: ['🌤️', 'Mainly clear'],
+    2: ['⛅', 'Partly cloudy'],
+    3: ['☁️', 'Overcast'],
+    45: ['🌫️', 'Foggy'],
+    48: ['🌫️', 'Foggy'],
+    51: ['🌦️', 'Light drizzle'],
+    53: ['🌦️', 'Drizzle'],
+    55: ['🌧️', 'Dense drizzle'],
+    61: ['🌧️', 'Light rain'],
+    63: ['🌧️', 'Rain'],
+    65: ['🌧️', 'Heavy rain'],
+    71: ['🌨️', 'Light snow'],
+    73: ['🌨️', 'Snow'],
+    75: ['❄️', 'Heavy snow'],
+    80: ['🌦️', 'Rain showers'],
+    81: ['🌧️', 'Rain showers'],
+    82: ['⛈️', 'Violent showers'],
+    95: ['⛈️', 'Thunderstorm'],
+    96: ['⛈️', 'Thunderstorm with hail'],
+    99: ['⛈️', 'Severe thunderstorm']
+  };
+
+  function getWeatherInfo(code) {
+    return weatherCodes[code] || ['🌡️', 'Unknown'];
+  }
+
+  async function searchWeather() {
+    const city = cityInput.value.trim();
+    if (city === '') return;
+
+    statusMsg.textContent = 'Loading... ⏳';
+    statusMsg.classList.remove('error');
+    statusMsg.style.display = 'block';
+    weatherInfo.classList.remove('active');
+
+    try {
+      // Step 1: Get coordinates for the city
+      const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`);
+      const geoData = await geoRes.json();
+
+      if (!geoData.results || geoData.results.length === 0) {
+        statusMsg.textContent = "City not found. Try again ❌";
+        statusMsg.classList.add('error');
+        return;
+      }
+
+      const { latitude, longitude, name, country } = geoData.results[0];
+
+      // Step 2: Get weather for those coordinates
+      const weatherRes = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code`
+      );
+      const weatherData = await weatherRes.json();
+      const current = weatherData.current;
+
+      currentTempC = current.temperature_2m;
+      currentFeelsLikeC = current.apparent_temperature;
+
+      const [icon, description] = getWeatherInfo(current.weather_code);
+
+      document.getElementById('location').textContent = `${name}, ${country}`;
+      document.getElementById('date').textContent = new Date().toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+      document.getElementById('weatherIcon').textContent = icon;
+      document.getElementById('condition').textContent = description;
+      document.getElementById('humidity').textContent = `${current.relative_humidity_2m}%`;
+      document.getElementById('wind').textContent = `${current.wind_speed_10m} km/h`;
+
+      updateTemperatureDisplay();
+
+      statusMsg.style.display = 'none';
+      weatherInfo.classList.add('active');
+
+    } catch (error) {
+      statusMsg.textContent = "Something went wrong. Try again ❌";
+      statusMsg.classList.add('error');
+      console.error(error);
+    }
+  }
+
+  function updateTemperatureDisplay() {
+    if (currentTempC === null) return;
+
+    if (isCelsius) {
+      document.getElementById('temperature').textContent = `${Math.round(currentTempC)}°C`;
+      document.getElementById('feelsLike').textContent = `${Math.round(currentFeelsLikeC)}°C`;
+    } else {
+      const tempF = (currentTempC * 9/5) + 32;
+      const feelsF = (currentFeelsLikeC * 9/5) + 32;
+      document.getElementById('temperature').textContent = `${Math.round(tempF)}°F`;
+      document.getElementById('feelsLike').textContent = `${Math.round(feelsF)}°F`;
+    }
+  }
+
+  celsiusBtn.addEventListener('click', () => {
+    isCelsius = true;
+    celsiusBtn.classList.add('active');
+    fahrenheitBtn.classList.remove('active');
+    updateTemperatureDisplay();
+  });
+
+  fahrenheitBtn.addEventListener('click', () => {
+    isCelsius = false;
+    fahrenheitBtn.classList.add('active');
+    celsiusBtn.classList.remove('active');
+    updateTemperatureDisplay();
+  });
+
+  searchBtn.addEventListener('click', searchWeather);
+
+  cityInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') searchWeather();
+  });
+</script>
+
+</body>
+</html>
